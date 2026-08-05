@@ -148,8 +148,15 @@ int ofono_set_online(const app_config *cfg, int online, command_result *res)
 
 int ofono_send_at(const app_config *cfg, const char *command, command_result *res)
 {
+    const char *cmd = command ? command : "";
+    size_t len = strlen(cmd);
+    int has_terminator = len > 0 && (cmd[len - 1] == '\r' || cmd[len - 1] == '\n');
+    if (!has_terminator && len >= 2 && cmd[len - 2] == '\\' &&
+        (cmd[len - 1] == 'r' || cmd[len - 1] == 'n')) {
+        has_terminator = 1;
+    }
     char at_arg[1024];
-    snprintf(at_arg, sizeof(at_arg), "string:%s", command);
+    snprintf(at_arg, sizeof(at_arg), has_terminator ? "string:%s" : "string:%s\r", cmd);
     const char *args[1];
     args[0] = at_arg;
     return dbus_send_call(cfg->ofono_destination, cfg->ofono_modem_path,

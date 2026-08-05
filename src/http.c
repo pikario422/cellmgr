@@ -388,7 +388,7 @@ static void api_sms_list(int fd, app_state *state, const char *query)
     command_result res;
     char *parsed = NULL;
     int rc = sms_messages_via_ofono(state, &res, &parsed);
-    if (rc == 0 && parsed && strstr(parsed, "\"items\":[]") == NULL) {
+    if (rc == 0 && parsed) {
         cellmgr_buf b;
         buf_init(&b, 1024);
         buf_append(&b, "{");
@@ -436,11 +436,19 @@ static void api_sms_read(int fd, app_state *state, const char *query)
         return;
     }
     if (!parsed || strstr(parsed, "\"items\":[]") != NULL) {
-        char err[256];
-        snprintf(err, sizeof(err), "ofono message list empty");
+        cellmgr_buf b;
+        buf_init(&b, 512);
+        buf_append(&b, "{");
+        json_prop_string(&b, "source", "ofono", 0);
+        json_prop_string(&b, "fallback", "at", 1);
+        json_prop_int(&b, "index", index, 1);
+        buf_append(&b, ",\"message\":null,\"parsed\":");
+        buf_append(&b, parsed ? parsed : "{\"items\":[]}");
+        buf_append(&b, "}");
         free(parsed);
         command_result_free(&res);
-        sms_read_via_at(fd, state, index, err);
+        response_json_body(fd, 1, b.data, NULL);
+        buf_free(&b);
         return;
     }
     cellmgr_buf b;
