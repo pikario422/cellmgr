@@ -42,13 +42,15 @@ GitHub Actions builds use a pinned SQLite amalgamation instead of the runner's s
 | Dependency | Version | Notes |
 | --- | --- | --- |
 | SQLite | 3.46.1, amalgamation id `3460100` | Downloaded from the official SQLite archive in CI and compiled into `cellmgrd`. |
+| Build container | Ubuntu 18.04 | Used by CI to match the target glibc generation. |
+| Target glibc | 2.27 | CI verifies the aarch64 cross libc max exported `GLIBC_2.x` symbol is `GLIBC_2.27`. |
 | C standard | C99 | Built with POSIX APIs. |
 | pthread | glibc/pthread from target toolchain | Required by scheduler and D-Bus monitor threads. |
 | D-Bus tools | target runtime `dbus-send`, `dbus-monitor` | Runtime dependency, not linked. |
 | ofono | target runtime | Must expose `/ril_0` or configured modem path and `org.ofono.Modem.SendAtcmd`. |
 | curl | target runtime, HTTP/HTTPS only | Used only for HTTP webhook SMS forwarding. SMTP does not use curl. |
 
-For the FM650 target described during development, the known runtime baseline is glibc 2.27 on aarch64.
+For the FM650 target described during development, the known runtime baseline is glibc 2.27 on aarch64. The GitHub Actions build runs inside an Ubuntu 18.04 container and verifies that the aarch64 cross libc does not exceed `GLIBC_2.27`.
 
 ## Build
 
@@ -83,7 +85,7 @@ make clean
 make CC=aarch64-unisoc-linux-gnu-gcc USE_BUNDLED_SQLITE=1 SQLITE_DIR=third_party/sqlite
 ```
 
-GitHub Actions builds a generic aarch64 Linux binary with `aarch64-linux-gnu-gcc`. For production on the module, prefer the vendor toolchain when available.
+GitHub Actions builds a generic aarch64 Linux binary with `aarch64-linux-gnu-gcc` inside an Ubuntu 18.04/glibc 2.27 build container. For production on the module, prefer the vendor toolchain when available.
 
 ## Run
 

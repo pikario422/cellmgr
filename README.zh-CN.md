@@ -39,6 +39,8 @@ GitHub Actions 使用固定版本 SQLite amalgamation 构建，不依赖 runner 
 | 依赖 | 版本 | 说明 |
 | --- | --- | --- |
 | SQLite | 3.46.1 | CI 下载官方 `sqlite-amalgamation-3460100` 并静态编译 |
+| 构建容器 | Ubuntu 18.04 | 用于对齐目标设备的 glibc 代际 |
+| 目标 glibc | 2.27 | CI 会校验 aarch64 cross libc 最大 `GLIBC_2.x` 符号必须是 `GLIBC_2.27` |
 | C 标准 | C99 | 使用 POSIX API |
 | pthread | 目标工具链自带 | 用于后台线程 |
 | ofono | 运行时环境自带 | 需要暴露 modem path 和 `SendAtcmd` |
@@ -72,7 +74,7 @@ make
 make CC=aarch64-unisoc-linux-gnu-gcc USE_BUNDLED_SQLITE=1 SQLITE_DIR=third_party/sqlite
 ```
 
-GitHub Actions 默认只构建 generic aarch64 Linux 版本。上设备量产时，优先使用厂商提供的 `aarch64-unisoc-linux-gnu-gcc` 工具链。
+GitHub Actions 默认只构建 generic aarch64 Linux 版本，并在 Ubuntu 18.04/glibc 2.27 构建容器内完成。上设备量产时，优先使用厂商提供的 `aarch64-unisoc-linux-gnu-gcc` 工具链。
 
 ## 运行
 
