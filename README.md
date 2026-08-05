@@ -4,6 +4,8 @@ CellMgr is a lightweight cellular module management backend written in C, with a
 
 The current default device profile targets Fibocom FM650, while the backend is designed to support more modules through JSON profiles.
 
+中文说明见 [README.zh-CN.md](README.zh-CN.md).
+
 ## Features
 
 - Device overview: CPU, memory, disk, temperature, uptime, WAN RX/TX counters.
