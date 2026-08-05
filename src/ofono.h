@@ -7,6 +7,8 @@
 int ofono_get_modem_properties(const app_config *cfg, command_result *res);
 int ofono_get_network_properties(const app_config *cfg, command_result *res);
 int ofono_get_sim_properties(const app_config *cfg, command_result *res);
+int ofono_get_modems(const app_config *cfg, command_result *res);
+int ofono_resolve_modem_path(const app_config *cfg, char *out_path, size_t out_sz, command_result *res);
 int ofono_set_powered(const app_config *cfg, int powered, command_result *res);
 int ofono_set_online(const app_config *cfg, int online, command_result *res);
 int ofono_send_at(const app_config *cfg, const char *command, command_result *res);

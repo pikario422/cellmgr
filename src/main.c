@@ -1,5 +1,6 @@
 #include "http.h"
 #include "dbus_monitor.h"
+#include "ofono.h"
 #include "profile.h"
 #include "scheduler.h"
 
@@ -118,6 +119,18 @@ int main(int argc, char **argv)
     free(allow_dangerous_at);
     free(auth_user);
     free(auth_pass);
+
+    char resolved_modem[128];
+    command_result modems_res;
+    memset(&modems_res, 0, sizeof(modems_res));
+    if (ofono_resolve_modem_path(&state.cfg, resolved_modem, sizeof(resolved_modem), &modems_res) == 0 &&
+        resolved_modem[0] != '\0' && strcmp(resolved_modem, state.cfg.ofono_modem_path) != 0) {
+        log_info("ofono modem path auto-discovered: %s -> %s",
+                 state.cfg.ofono_modem_path, resolved_modem);
+        snprintf(state.cfg.ofono_modem_path, sizeof(state.cfg.ofono_modem_path), "%s", resolved_modem);
+        db_set_setting(&state.db, "ofono_modem_path", state.cfg.ofono_modem_path);
+    }
+    command_result_free(&modems_res);
 
     scheduler_start(&state);
     dbus_monitor_start(&state);

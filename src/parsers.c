@@ -415,7 +415,13 @@ static char *parse_sms_list_or_read(const char *parser, const char *raw)
                 trim_in_place(body);
             }
         }
-        buf_append(&b, ",\"message\":{");
+        buf_append(&b, ",\"items\":[{");
+        json_prop_int(&b, "index", 1, 0);
+        json_prop_string(&b, "status", status, 1);
+        json_prop_string(&b, "sender", sender, 1);
+        json_prop_string(&b, "timestamp", ts, 1);
+        json_prop_string(&b, "body", body, 1);
+        buf_append(&b, "}],\"message\":{");
         json_prop_string(&b, "status", status, 0);
         json_prop_string(&b, "sender", sender, 1);
         json_prop_string(&b, "timestamp", ts, 1);

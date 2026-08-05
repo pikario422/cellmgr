@@ -323,17 +323,78 @@ static int sms_messages_via_ofono(app_state *state, command_result *res, char **
     return res->exit_code;
 }
 
+static void sms_list_via_at(int fd, app_state *state, const char *query, const char *ofono_error)
+{
+    const char *status = strstr(query ? query : "", "unread=1") ? "\"REC UNREAD\"" : "\"ALL\"";
+    char *tmpl = profile_cmd_or_default(state, "sms.list", "command_template", "AT+CMGL={status}");
+    char cmd[256];
+    const char *mark = strstr(tmpl, "{status}");
+    if (mark) {
+        size_t prefix = (size_t)(mark - tmpl);
+        snprintf(cmd, sizeof(cmd), "%.*s%s%s", (int)prefix, tmpl, status, mark + 8);
+    } else {
+        snprintf(cmd, sizeof(cmd), "%s", tmpl);
+    }
+    free(tmpl);
+    command_result res;
+    at_send(&state->db, &state->cfg, cmd, 1, &res);
+    char *parsed = parse_at_response_json("cmgl", res.out ? res.out : "");
+    cellmgr_buf b;
+    buf_init(&b, 1024);
+    buf_append(&b, "{");
+    json_prop_string(&b, "source", "at", 0);
+    json_prop_string(&b, "preferred_source", "ofono", 1);
+    json_prop_string(&b, "ofono_error", ofono_error ? ofono_error : "", 1);
+    json_prop_string(&b, "command", cmd, 1);
+    json_prop_int(&b, "exit_code", res.exit_code, 1);
+    json_prop_string(&b, "raw", res.out ? res.out : "", 1);
+    buf_append(&b, ",\"parsed\":");
+    buf_append(&b, parsed ? parsed : "{}");
+    buf_append(&b, "}");
+    response_json_body(fd, res.exit_code == 0, b.data, res.err);
+    buf_free(&b);
+    free(parsed);
+    command_result_free(&res);
+}
+
+static void sms_read_via_at(int fd, app_state *state, int index, const char *ofono_error)
+{
+    char cmd[64];
+    snprintf(cmd, sizeof(cmd), "AT+CMGR=%d", index);
+    command_result res;
+    at_send(&state->db, &state->cfg, cmd, 1, &res);
+    char *parsed = parse_at_response_json("cmgr", res.out ? res.out : "");
+    cellmgr_buf b;
+    buf_init(&b, 1024);
+    buf_append(&b, "{");
+    json_prop_string(&b, "source", "at", 0);
+    json_prop_string(&b, "preferred_source", "ofono", 1);
+    json_prop_string(&b, "ofono_error", ofono_error ? ofono_error : "", 1);
+    json_prop_int(&b, "index", index, 1);
+    json_prop_string(&b, "command", cmd, 1);
+    json_prop_int(&b, "exit_code", res.exit_code, 1);
+    json_prop_string(&b, "raw", res.out ? res.out : "", 1);
+    buf_append(&b, ",\"parsed\":");
+    buf_append(&b, parsed ? parsed : "{}");
+    buf_append(&b, "}");
+    response_json_body(fd, res.exit_code == 0, b.data, res.err);
+    buf_free(&b);
+    free(parsed);
+    command_result_free(&res);
+}
+
 static void api_sms_list(int fd, app_state *state, const char *query)
 {
-    (void)query;
     command_result res;
     char *parsed = NULL;
     int rc = sms_messages_via_ofono(state, &res, &parsed);
-    if (rc == 0) {
+    if (rc == 0 && parsed && strstr(parsed, "\"items\":[]") == NULL) {
         cellmgr_buf b;
         buf_init(&b, 1024);
         buf_append(&b, "{");
-        json_prop_string(&b, "command", "org.ofono.MessageManager.GetMessages", 0);
+        json_prop_string(&b, "source", "ofono", 0);
+        json_prop_string(&b, "fallback", "at", 1);
+        json_prop_string(&b, "command", "org.ofono.MessageManager.GetMessages", 1);
         json_prop_int(&b, "exit_code", res.exit_code, 1);
         json_prop_string(&b, "raw", res.out ? res.out : "", 1);
         buf_append(&b, ",\"parsed\":");
@@ -342,7 +403,12 @@ static void api_sms_list(int fd, app_state *state, const char *query)
         response_json_body(fd, 1, b.data, NULL);
         buf_free(&b);
     } else {
-        response_json_body(fd, 0, NULL, res.err ? res.err : "ofono MessageManager.GetMessages failed");
+        char err[512];
+        snprintf(err, sizeof(err), "%s", res.err ? res.err : "ofono MessageManager.GetMessages failed");
+        free(parsed);
+        command_result_free(&res);
+        sms_list_via_at(fd, state, query, err);
+        return;
     }
     free(parsed);
     command_result_free(&res);
@@ -362,19 +428,31 @@ static void api_sms_read(int fd, app_state *state, const char *query)
     command_result res;
     char *parsed = NULL;
     if (sms_messages_via_ofono(state, &res, &parsed) != 0) {
-        response_json_body(fd, 0, NULL, res.err ? res.err : "ofono MessageManager.GetMessages failed");
+        char err[512];
+        snprintf(err, sizeof(err), "%s", res.err ? res.err : "ofono MessageManager.GetMessages failed");
         free(parsed);
         command_result_free(&res);
+        sms_read_via_at(fd, state, index, err);
+        return;
+    }
+    if (!parsed || strstr(parsed, "\"items\":[]") != NULL) {
+        char err[256];
+        snprintf(err, sizeof(err), "ofono message list empty");
+        free(parsed);
+        command_result_free(&res);
+        sms_read_via_at(fd, state, index, err);
         return;
     }
     cellmgr_buf b;
     buf_init(&b, 2048);
     buf_append(&b, "{");
-    json_prop_int(&b, "index", index, 0);
+    json_prop_string(&b, "source", "ofono", 0);
+    json_prop_string(&b, "fallback", "at", 1);
+    json_prop_int(&b, "index", index, 1);
     json_prop_string(&b, "raw", res.out ? res.out : "", 1);
     json_prop_int(&b, "exit_code", res.exit_code, 1);
     buf_append(&b, ",\"parsed\":");
-    buf_append(&b, parsed);
+    buf_append(&b, parsed ? parsed : "{\"items\":[]}");
     buf_append(&b, "}");
     response_json_body(fd, res.exit_code == 0, b.data, res.err);
     buf_free(&b);
@@ -828,6 +906,7 @@ static void api_dbus_commands(int fd)
 {
     const char *json =
         "{\"commands\":["
+        "{\"name\":\"manager_get_modems\",\"path\":\"/\",\"method\":\"org.ofono.Manager.GetModems\"},"
         "{\"name\":\"modem_properties\",\"method\":\"org.ofono.Modem.GetProperties\"},"
         "{\"name\":\"network_properties\",\"method\":\"org.ofono.NetworkRegistration.GetProperties\"},"
         "{\"name\":\"sim_properties\",\"method\":\"org.ofono.SimManager.GetProperties\"},"
