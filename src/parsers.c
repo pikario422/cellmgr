@@ -506,3 +506,139 @@ char *parse_dbus_properties_json(const char *raw)
     buf_append(&b, "}");
     return b.data;
 }
+
+static void append_dbus_variant_json(cellmgr_buf *b, const char *line)
+{
+    const char *p = strstr(line, "variant");
+    if (!p) {
+        buf_append(b, "null");
+        return;
+    }
+    p += 7;
+    while (*p && isspace((unsigned char)*p)) p++;
+    if (strncmp(p, "string", 6) == 0 || strncmp(p, "object path", 11) == 0) {
+        p = strchr(p, '"');
+        if (!p) {
+            buf_append(b, "\"\"");
+            return;
+        }
+        char *s = extract_quoted_after(p);
+        if (!s) {
+            buf_append(b, "\"\"");
+            return;
+        }
+        json_escape(b, s);
+        free(s);
+        return;
+    }
+    if (strncmp(p, "boolean", 7) == 0) {
+        p += 7;
+        while (*p && isspace((unsigned char)*p)) p++;
+        buf_append(b, (strncmp(p, "true", 4) == 0) ? "true" : "false");
+        return;
+    }
+    while (*p && !isspace((unsigned char)*p)) p++;
+    while (*p && isspace((unsigned char)*p)) p++;
+    char token[128];
+    size_t n = 0;
+    while (p[n] && !isspace((unsigned char)p[n]) && p[n] != ')' && n + 1 < sizeof(token)) {
+        token[n] = p[n];
+        n++;
+    }
+    token[n] = '\0';
+    if (token[0] == '\0') {
+        buf_append(b, "null");
+        return;
+    }
+    if (strcmp(token, "true") == 0 || strcmp(token, "false") == 0) {
+        buf_append(b, token);
+        return;
+    }
+    buf_append(b, token);
+}
+
+char *parse_dbus_messages_json(const char *raw)
+{
+    char *copy = xstrdup(raw ? raw : "");
+    cellmgr_buf out;
+    cellmgr_buf item;
+    buf_init(&out, 2048);
+    buf_init(&item, 1024);
+    buf_append(&out, "{\"items\":[");
+    int have_item = 0;
+    int first_item = 1;
+    int first_prop = 1;
+    int index = 0;
+    char *current_key = NULL;
+    char *save = NULL;
+    char *line = strtok_r(copy, "\r\n", &save);
+    while (line) {
+        trim_in_place(line);
+        if (strncmp(line, "object path ", 12) == 0) {
+            if (have_item) {
+                buf_append(&item, "}}");
+                if (!first_item) buf_append(&out, ",");
+                first_item = 0;
+                buf_append(&out, item.data);
+                buf_free(&item);
+                buf_init(&item, 1024);
+                free(current_key);
+                current_key = NULL;
+                have_item = 0;
+            }
+            char *path = extract_quoted_after(line);
+            if (!path) {
+                line = strtok_r(NULL, "\r\n", &save);
+                continue;
+            }
+            index++;
+            buf_append(&item, "{\"index\":");
+            buf_appendf(&item, "%d", index);
+            buf_append(&item, ",\"path\":");
+            json_escape(&item, path);
+            buf_append(&item, ",\"properties\":{");
+            have_item = 1;
+            first_prop = 1;
+            free(path);
+            line = strtok_r(NULL, "\r\n", &save);
+            continue;
+        }
+        if (!have_item) {
+            line = strtok_r(NULL, "\r\n", &save);
+            continue;
+        }
+        if (strncmp(line, "string ", 7) == 0 && !current_key) {
+            current_key = extract_quoted_after(line);
+            line = strtok_r(NULL, "\r\n", &save);
+            continue;
+        }
+        if (strncmp(line, "variant", 7) == 0 && current_key) {
+            if (!first_prop) buf_append(&item, ",");
+            first_prop = 0;
+            json_escape(&item, current_key);
+            buf_append(&item, ":");
+            append_dbus_variant_json(&item, line);
+            free(current_key);
+            current_key = NULL;
+            line = strtok_r(NULL, "\r\n", &save);
+            continue;
+        }
+        if (strcmp(line, ")") == 0 || strcmp(line, "]") == 0) {
+            free(current_key);
+            current_key = NULL;
+        }
+        line = strtok_r(NULL, "\r\n", &save);
+    }
+    if (have_item) {
+        buf_append(&item, "}}");
+        if (!first_item) buf_append(&out, ",");
+        buf_append(&out, item.data);
+    }
+    buf_append(&out, "],\"raw\":");
+    json_escape(&out, raw ? raw : "");
+    buf_append(&out, "}");
+    free(current_key);
+    buf_free(&item);
+    free(copy);
+    return out.data;
+}

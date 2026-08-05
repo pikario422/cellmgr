@@ -5,5 +5,6 @@
 
 char *parse_at_response_json(const char *parser, const char *raw);
 char *parse_dbus_properties_json(const char *raw);
+char *parse_dbus_messages_json(const char *raw);
 
 #endif
