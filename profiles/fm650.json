@@ -118,6 +118,11 @@
       "parser": "gtcelllock",
       "safe": false
     },
+    "network.cell_info": {
+      "read": "AT+GTCCINFO?",
+      "parser": "gtccinfo",
+      "safe": true
+    },
     "sms.indication": {
       "read": "AT+CNMI?",
       "test": "AT+CNMI=?",

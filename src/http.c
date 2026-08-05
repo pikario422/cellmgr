@@ -167,17 +167,29 @@ static void api_modem_status(int fd, app_state *state)
     ofono_get_network_properties(&state->cfg, &net);
     ofono_get_sim_properties(&state->cfg, &sim);
     cellmgr_buf b;
+    char *modem_parsed = parse_dbus_properties_json(modem.out ? modem.out : "");
+    char *network_parsed = parse_dbus_properties_json(net.out ? net.out : "");
+    char *sim_parsed = parse_dbus_properties_json(sim.out ? sim.out : "");
     buf_init(&b, 4096);
     buf_append(&b, "{");
     json_prop_int(&b, "modem_exit", modem.exit_code, 0);
     json_prop_string(&b, "modem_raw", modem.out ? modem.out : "", 1);
+    buf_append(&b, ",\"modem_parsed\":");
+    buf_append(&b, modem_parsed ? modem_parsed : "{}");
     json_prop_int(&b, "network_exit", net.exit_code, 1);
     json_prop_string(&b, "network_raw", net.out ? net.out : "", 1);
+    buf_append(&b, ",\"network_parsed\":");
+    buf_append(&b, network_parsed ? network_parsed : "{}");
     json_prop_int(&b, "sim_exit", sim.exit_code, 1);
     json_prop_string(&b, "sim_raw", sim.out ? sim.out : "", 1);
+    buf_append(&b, ",\"sim_parsed\":");
+    buf_append(&b, sim_parsed ? sim_parsed : "{}");
     buf_append(&b, "}");
     response_json_body(fd, 1, b.data, NULL);
     buf_free(&b);
+    free(modem_parsed);
+    free(network_parsed);
+    free(sim_parsed);
     command_result_free(&modem);
     command_result_free(&net);
     command_result_free(&sim);
@@ -890,6 +902,27 @@ static void api_network_bands(int fd, app_state *state, const char *query)
     command_result_free(&res);
 }
 
+static void api_network_cells(int fd, app_state *state)
+{
+    char *cmd = profile_cmd_or_default(state, "network.cell_info", "read", "AT+GTCCINFO?");
+    command_result res;
+    at_send(&state->db, &state->cfg, cmd, 1, &res);
+    char *parsed = parse_at_response_json("gtccinfo", res.out ? res.out : "");
+    cellmgr_buf b;
+    buf_init(&b, 2048);
+    buf_append(&b, "{");
+    json_prop_string(&b, "command", cmd ? cmd : "", 0);
+    json_prop_int(&b, "exit_code", res.exit_code, 1);
+    buf_append(&b, ",\"parsed\":");
+    buf_append(&b, parsed ? parsed : "{}");
+    buf_append(&b, "}");
+    response_json_body(fd, res.exit_code == 0, b.data, res.err);
+    buf_free(&b);
+    free(parsed);
+    free(cmd);
+    command_result_free(&res);
+}
+
 static void replace_token(char *dst, size_t dst_sz, const char *src,
                           const char *token, const char *value)
 {
@@ -1140,6 +1173,8 @@ static void route_request(int fd, app_state *state, http_request *req)
         api_dbus_test(fd, state, req->body);
     } else if (strcmp(req->path, "/api/network/bands") == 0) {
         api_network_bands(fd, state, req->query);
+    } else if (strcmp(req->path, "/api/network/cells") == 0) {
+        api_network_cells(fd, state);
     } else if (strcmp(req->path, "/api/network/lock-band") == 0) {
         api_network_lock_band(fd, state, req->body);
     } else if (strcmp(req->path, "/api/network/lock-cell") == 0) {
