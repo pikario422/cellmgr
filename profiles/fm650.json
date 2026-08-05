@@ -1,0 +1,166 @@
+{
+  "schema_version": 1,
+  "id": "fibocom-fm650",
+  "name": "Fibocom FM650",
+  "vendor": "Fibocom",
+  "models": ["FM650", "FG650"],
+  "source": "FM650_AT_Commands_full.txt",
+  "default_modem_path": "/ril_0",
+  "at_backend": "ofono-sendatcmd",
+  "dbus": {
+    "destination": "org.ofono",
+    "modem_interface": "org.ofono.Modem",
+    "network_interface": "org.ofono.NetworkRegistration",
+    "sim_interface": "org.ofono.SimManager",
+    "message_interface": "org.ofono.MessageManager",
+    "send_at_method": "SendAtcmd"
+  },
+  "limits": {
+    "at_response_max_bytes": 8192,
+    "default_timeout_ms": 3000,
+    "lte_pci_min": 0,
+    "lte_pci_max": 503,
+    "nr_pci_min": 0,
+    "nr_pci_max": 1007
+  },
+  "capabilities": {
+    "identity.imei": {
+      "command": "AT+CGSN",
+      "parser": "line_after_echo",
+      "safe": true
+    },
+    "signal.basic": {
+      "command": "AT+CSQ",
+      "parser": "csq",
+      "safe": true
+    },
+    "registration.cs": {
+      "read": "AT+CREG?",
+      "enable_urc": "AT+CREG=2",
+      "parser": "creg",
+      "safe": true
+    },
+    "registration.gprs": {
+      "read": "AT+CGREG?",
+      "enable_urc": "AT+CGREG=2",
+      "parser": "cgreg",
+      "safe": true
+    },
+    "registration.eps": {
+      "read": "AT+CEREG?",
+      "enable_urc": "AT+CEREG=2",
+      "parser": "cereg",
+      "safe": true
+    },
+    "registration.nr": {
+      "read": "AT+C5GREG?",
+      "enable_urc": "AT+C5GREG=2",
+      "parser": "c5greg",
+      "safe": true
+    },
+    "operator.current": {
+      "read": "AT+COPS?",
+      "test": "AT+COPS=?",
+      "parser": "cops",
+      "safe": true
+    },
+    "pdp.context": {
+      "read": "AT+CGDCONT?",
+      "test": "AT+CGDCONT=?",
+      "set_template": "AT+CGDCONT={cid},\"{pdp_type}\",\"{apn}\"",
+      "parser": "cgdcont",
+      "safe": false
+    },
+    "pdp.activate": {
+      "read": "AT+CGACT?",
+      "test": "AT+CGACT=?",
+      "set_template": "AT+CGACT={state},{cid}",
+      "parser": "cgact",
+      "safe": false
+    },
+    "qos.qci": {
+      "read": "AT+CGEQOS?",
+      "test": "AT+CGEQOS=?",
+      "set_template": "AT+CGEQOS={cid},{qci},{dl_gbr},{ul_gbr},{dl_mbr},{ul_mbr}",
+      "parser": "cgeqos",
+      "safe": false
+    },
+    "network.band": {
+      "read": "AT+GTACT?",
+      "test": "AT+GTACT=?",
+      "discovery": {
+        "command": "AT+GTACT=?",
+        "cache_ttl_sec": 86400
+      },
+      "set_template": "AT+GTACT={mode},{rat},{preferred_rat},{bands}",
+      "parser": "gtact",
+      "display_rules": {
+        "lte_band_code": "fibocom_lte_offset_100",
+        "nr_band_code": "fibocom_nr_prefix_50",
+        "examples": {
+          "101": "B1",
+          "141": "B41",
+          "5010": "n10"
+        }
+      },
+      "safe": false
+    },
+    "network.cell_lock": {
+      "read": "AT+GTCELLLOCK?",
+      "test": "AT+GTCELLLOCK=?",
+      "discovery": {
+        "command": "AT+GTCELLLOCK=?",
+        "cache_ttl_sec": 86400
+      },
+      "set_template": "AT+GTCELLLOCK={mode},{rat},{type},{earfcn},{pci}",
+      "frequency_template": "AT+GTCELLLOCK={mode},{rat},1,{earfcn}",
+      "unlock": "AT+GTCELLLOCK=0",
+      "parser": "gtcelllock",
+      "safe": false
+    },
+    "sms.indication": {
+      "read": "AT+CNMI?",
+      "test": "AT+CNMI=?",
+      "set_template": "AT+CNMI={mode},{mt},{bm},{ds},{bfr}",
+      "parser": "cnmi",
+      "safe": false
+    },
+    "sms.list": {
+      "command_template": "AT+CMGL={status}",
+      "parser": "cmgl",
+      "safe": true
+    },
+    "sms.read": {
+      "command_template": "AT+CMGR={index}",
+      "parser": "cmgr",
+      "safe": true
+    },
+    "sms.delete": {
+      "command_template": "AT+CMGD={index},{delete_flag}",
+      "parser": "ok_error",
+      "safe": false
+    },
+    "sms.send": {
+      "command_template": "AT+CMGS=\"{number}\"",
+      "prompt": ">",
+      "body_suffix": "ctrl_z",
+      "parser": "cmgs",
+      "safe": false
+    }
+  },
+  "auto_discovery": {
+    "on_profile_activate": true,
+    "refresh_button": true,
+    "cache_table": "capability_cache"
+  },
+  "dangerous_patterns": [
+    "AT+CFUN=1,1",
+    "AT+CPWROFF",
+    "AT+GTACT=",
+    "AT+GTCELLLOCK=",
+    "AT+CMGD=",
+    "AT+CGDCONT=",
+    "AT+CGACT=",
+    "AT+CGEQOS="
+  ]
+}

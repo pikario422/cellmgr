@@ -1,0 +1,11 @@
+build/
+dist/
+data/
+third_party/sqlite/
+cellmgrd
+cellmgrd-*
+*.o
+*.db
+*.db-shm
+*.db-wal
+FM650_AT_Commands_full.txt

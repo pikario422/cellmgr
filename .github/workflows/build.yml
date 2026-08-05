@@ -1,0 +1,72 @@
+name: build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  SQLITE_VERSION: "3460100"
+  SQLITE_VERSION_LABEL: "3.46.1"
+  SQLITE_YEAR: "2024"
+  SQLITE_DIR: third_party/sqlite
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x86_64
+            cc: gcc
+            target: cellmgrd-linux-x86_64
+            packages: build-essential curl unzip file
+          - name: linux-aarch64
+            cc: aarch64-linux-gnu-gcc
+            target: cellmgrd-linux-aarch64
+            packages: build-essential gcc-aarch64-linux-gnu curl unzip file
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ${{ matrix.packages }}
+
+      - name: Fetch pinned SQLite amalgamation
+        run: |
+          mkdir -p "$SQLITE_DIR" .deps
+          curl -fL "https://www.sqlite.org/${SQLITE_YEAR}/sqlite-amalgamation-${SQLITE_VERSION}.zip" -o .deps/sqlite.zip
+          unzip -q .deps/sqlite.zip -d .deps
+          cp ".deps/sqlite-amalgamation-${SQLITE_VERSION}/sqlite3.c" "$SQLITE_DIR/"
+          cp ".deps/sqlite-amalgamation-${SQLITE_VERSION}/sqlite3.h" "$SQLITE_DIR/"
+          grep "#define SQLITE_VERSION \"${SQLITE_VERSION_LABEL}\"" "$SQLITE_DIR/sqlite3.h"
+
+      - name: Build
+        run: |
+          make clean TARGET="${{ matrix.target }}"
+          make \
+            CC="${{ matrix.cc }}" \
+            TARGET="${{ matrix.target }}" \
+            USE_BUNDLED_SQLITE=1 \
+            SQLITE_DIR="$SQLITE_DIR" \
+            CFLAGS="-Os"
+          file "${{ matrix.target }}"
+
+      - name: Package artifact
+        run: |
+          mkdir -p dist
+          cp "${{ matrix.target }}" dist/
+          cp config/cellmgrd.conf dist/
+          cp profiles/fm650.json dist/
+          tar -C dist -czf "dist/${{ matrix.target }}.tar.gz" "${{ matrix.target }}" cellmgrd.conf fm650.json
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          path: dist/${{ matrix.target }}.tar.gz
