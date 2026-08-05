@@ -44,7 +44,7 @@ jobs:
           unzip -q .deps/sqlite.zip -d .deps
           cp ".deps/sqlite-amalgamation-${SQLITE_VERSION}/sqlite3.c" "$SQLITE_DIR/"
           cp ".deps/sqlite-amalgamation-${SQLITE_VERSION}/sqlite3.h" "$SQLITE_DIR/"
-          grep "#define SQLITE_VERSION \"${SQLITE_VERSION_LABEL}\"" "$SQLITE_DIR/sqlite3.h"
+          grep -E "#define SQLITE_VERSION[[:space:]]+\"${SQLITE_VERSION_LABEL}\"" "$SQLITE_DIR/sqlite3.h"
 
       - name: Build
         run: |
