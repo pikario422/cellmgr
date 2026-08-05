@@ -83,7 +83,7 @@ make clean
 make CC=aarch64-unisoc-linux-gnu-gcc USE_BUNDLED_SQLITE=1 SQLITE_DIR=third_party/sqlite
 ```
 
-GitHub Actions also builds a generic aarch64 Linux binary with `aarch64-linux-gnu-gcc`. For production on the module, prefer the vendor toolchain when available.
+GitHub Actions builds a generic aarch64 Linux binary with `aarch64-linux-gnu-gcc`. For production on the module, prefer the vendor toolchain when available.
 
 ## Run
 

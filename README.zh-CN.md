@@ -72,6 +72,8 @@ make
 make CC=aarch64-unisoc-linux-gnu-gcc USE_BUNDLED_SQLITE=1 SQLITE_DIR=third_party/sqlite
 ```
 
+GitHub Actions 默认只构建 generic aarch64 Linux 版本。上设备量产时，优先使用厂商提供的 `aarch64-unisoc-linux-gnu-gcc` 工具链。
+
 ## 运行
 
 ```sh

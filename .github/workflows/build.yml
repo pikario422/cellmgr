@@ -13,20 +13,11 @@ env:
 
 jobs:
   build:
-    name: ${{ matrix.name }}
+    name: linux-aarch64
     runs-on: ubuntu-24.04
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: linux-x86_64
-            cc: gcc
-            target: cellmgrd-linux-x86_64
-            packages: build-essential curl unzip file
-          - name: linux-aarch64
-            cc: aarch64-linux-gnu-gcc
-            target: cellmgrd-linux-aarch64
-            packages: build-essential gcc-aarch64-linux-gnu curl unzip file
+    env:
+      CC: aarch64-linux-gnu-gcc
+      TARGET: cellmgrd-linux-aarch64
 
     steps:
       - name: Checkout
@@ -35,7 +26,14 @@ jobs:
       - name: Install build tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ${{ matrix.packages }}
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            gcc-aarch64-linux-gnu \
+            libc6-dev-arm64-cross \
+            linux-libc-dev-arm64-cross \
+            curl \
+            unzip \
+            file
 
       - name: Fetch pinned SQLite amalgamation
         run: |
@@ -48,25 +46,24 @@ jobs:
 
       - name: Build
         run: |
-          make clean TARGET="${{ matrix.target }}"
+          make clean TARGET="$TARGET"
           make \
-            CC="${{ matrix.cc }}" \
-            TARGET="${{ matrix.target }}" \
+            CC="$CC" \
+            TARGET="$TARGET" \
             USE_BUNDLED_SQLITE=1 \
-            SQLITE_DIR="$SQLITE_DIR" \
-            CFLAGS="-Os"
-          file "${{ matrix.target }}"
+            SQLITE_DIR="$SQLITE_DIR"
+          file "$TARGET"
 
       - name: Package artifact
         run: |
           mkdir -p dist
-          cp "${{ matrix.target }}" dist/
+          cp "$TARGET" dist/
           cp config/cellmgrd.conf dist/
           cp profiles/fm650.json dist/
-          tar -C dist -czf "dist/${{ matrix.target }}.tar.gz" "${{ matrix.target }}" cellmgrd.conf fm650.json
+          tar -C dist -czf "dist/${TARGET}.tar.gz" "$TARGET" cellmgrd.conf fm650.json
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.target }}
-          path: dist/${{ matrix.target }}.tar.gz
+          name: cellmgrd-linux-aarch64
+          path: dist/cellmgrd-linux-aarch64.tar.gz
