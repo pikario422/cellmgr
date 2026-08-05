@@ -78,11 +78,12 @@ jobs:
 
       - name: Package artifact
         run: |
-          mkdir -p dist
+          rm -rf dist
+          mkdir -p dist/config dist/profiles dist/data
           cp "$TARGET" dist/
-          cp config/cellmgrd.conf dist/
-          cp profiles/fm650.json dist/
-          tar -C dist -czf "dist/${TARGET}.tar.gz" "$TARGET" cellmgrd.conf fm650.json
+          cp config/cellmgrd.conf dist/config/
+          cp profiles/fm650.json dist/profiles/
+          tar -C dist -czf "dist/${TARGET}.tar.gz" "$TARGET" config profiles data
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

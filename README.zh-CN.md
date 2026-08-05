@@ -88,6 +88,23 @@ GitHub Actions 默认只构建 generic aarch64 Linux 版本，并在 Ubuntu 18.0
 http://<设备地址>:4242/
 ```
 
+GitHub Actions 产物解压后的结构：
+
+```text
+cellmgrd-linux-aarch64
+config/cellmgrd.conf
+profiles/fm650.json
+data/
+```
+
+在解压目录内运行：
+
+```sh
+./cellmgrd-linux-aarch64 -c config/cellmgrd.conf
+```
+
+如果不传 `-c`，程序会先尝试 `./config/cellmgrd.conf`，再尝试旁边的 `./cellmgrd.conf`。SQLite 数据库父目录会自动创建。
+
 ## Mock 预览
 
 直接打开：

@@ -1,6 +1,43 @@
 #include "db.h"
 #include "json_util.h"
 
+#include <sys/stat.h>
+
+static void ensure_parent_dir(const char *path)
+{
+    char tmp[512];
+    snprintf(tmp, sizeof(tmp), "%s", path ? path : "");
+    char *slash = strrchr(tmp, '/');
+    if (!slash) {
+        return;
+    }
+    *slash = '\0';
+    if (tmp[0] == '\0') {
+        return;
+    }
+    char cur[512] = "";
+    char *p = tmp;
+    if (*p == '/') {
+        snprintf(cur, sizeof(cur), "/");
+        p++;
+    }
+    while (*p) {
+        char *next = strchr(p, '/');
+        if (next) {
+            *next = '\0';
+        }
+        if (cur[0] != '\0' && strcmp(cur, "/") != 0) {
+            strncat(cur, "/", sizeof(cur) - strlen(cur) - 1);
+        }
+        strncat(cur, p, sizeof(cur) - strlen(cur) - 1);
+        mkdir(cur, 0755);
+        if (!next) {
+            break;
+        }
+        p = next + 1;
+    }
+}
+
 static int exec_sql(app_db *db, const char *sql)
 {
     char *err = NULL;
@@ -16,6 +53,7 @@ static int exec_sql(app_db *db, const char *sql)
 int db_open(app_db *db, const char *path)
 {
     memset(db, 0, sizeof(*db));
+    ensure_parent_dir(path);
     int rc = sqlite3_open(path, &db->conn);
     if (rc != SQLITE_OK) {
         log_error("sqlite open failed: %s", sqlite3_errmsg(db->conn));

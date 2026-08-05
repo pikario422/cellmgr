@@ -99,6 +99,23 @@ Open:
 http://<device-ip>:4242/
 ```
 
+Release artifacts are packaged with this layout:
+
+```text
+cellmgrd-linux-aarch64
+config/cellmgrd.conf
+profiles/fm650.json
+data/
+```
+
+Run from the extracted artifact directory:
+
+```sh
+./cellmgrd-linux-aarch64 -c config/cellmgrd.conf
+```
+
+If no `-c` is provided, the daemon first tries `./config/cellmgrd.conf`, then falls back to `./cellmgrd.conf`. The SQLite database parent directory is created automatically.
+
 The default config has authentication disabled:
 
 ```ini

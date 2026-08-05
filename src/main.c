@@ -5,6 +5,11 @@
 
 #include <unistd.h>
 
+static int file_exists(const char *path)
+{
+    return access(path, R_OK) == 0;
+}
+
 static const char *arg_value(int argc, char **argv, const char *name)
 {
     for (int i = 1; i + 1 < argc; i++) {
@@ -24,7 +29,11 @@ int main(int argc, char **argv)
 
     app_state state;
     memset(&state, 0, sizeof(state));
-    config_load(&state.cfg, config_path);
+    if (config_load(&state.cfg, config_path) != 0 && strcmp(config_path, CELLMGR_DEFAULT_CONFIG) == 0) {
+        if (file_exists("./cellmgrd.conf")) {
+            config_load(&state.cfg, "./cellmgrd.conf");
+        }
+    }
     snprintf(state.session_token, sizeof(state.session_token), "%ld%ld", now_unix(), (long)getpid());
     config_dump(&state.cfg);
 
@@ -35,7 +44,11 @@ int main(int argc, char **argv)
         db_close(&state.db);
         return 1;
     }
-    profile_import_file(&state.db, state.cfg.profile_path, state.cfg.active_profile);
+    if (profile_import_file(&state.db, state.cfg.profile_path, state.cfg.active_profile) != 0 &&
+        strcmp(state.cfg.profile_path, CELLMGR_DEFAULT_PROFILE) == 0 &&
+        file_exists("./fm650.json")) {
+        profile_import_file(&state.db, "./fm650.json", state.cfg.active_profile);
+    }
 
     char *active = db_get_setting(&state.db, "active_profile");
     if (active && active[0] != '\0') {
