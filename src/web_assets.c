@@ -67,10 +67,10 @@ const char *web_app_js(void)
     return
         "const $=s=>document.querySelector(s);"
         "const fmt=o=>JSON.stringify(o,null,2);let selectedProfile='';let token=localStorage.cellmgrToken||'';"
-        "function setv(s,v){let e=$(s);if(document.activeElement!==e)e.value=v??''}"
-        "async function login(){let username=prompt('用户名','admin'),password=prompt('密码','');let r=await fetch('/api/auth/login',{method:'POST',body:JSON.stringify({username,password})}).then(x=>x.json());if(r.ok){token=r.data.token;localStorage.cellmgrToken=token;return true}alert('登录失败');return false}"
-        "async function api(p,o={}){o.headers=o.headers||{};if(token)o.headers['X-Cellmgr-Session']=token;const r=await fetch(p,o);let j=await r.json();if(!j.ok&&j.error==='unauthorized'){if(await login())return api(p,o)}return j}"
-        "function tile(k,v){return `<div class=tile><span>${k}</span><strong>${v??'-'}</strong></div>`}"
+        "function setv(s,v){let e=$(s);if(e&&document.activeElement!==e)e.value=(v==null?'':v)}"
+        "async function login(){let username=prompt('user','admin'),password=prompt('password','');let r=await fetch('/api/auth/login',{method:'POST',body:JSON.stringify({username:username,password:password})}).then(x=>x.json());if(r.ok){token=r.data.token;localStorage.cellmgrToken=token;return true}alert('login failed');return false}"
+        "async function api(p,o){o=o||{};o.headers=o.headers||{};if(token)o.headers['X-Cellmgr-Session']=token;const r=await fetch(p,o);let j=await r.json();if(!j.ok&&j.error==='unauthorized'){if(await login())return api(p,o)}return j}"
+        "function tile(k,v){return '<div class=tile><span>'+k+'</span><strong>'+((v==null)?'-':v)+'</strong></div>'}"
         "document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{"
         "document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');"
         "document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));$('#'+b.dataset.view).classList.add('active');refresh()});"
@@ -120,5 +120,5 @@ const char *web_app_js(void)
         "$('#saveForward').onclick=async()=>{$('#settingsJson').textContent=fmt(await api('/api/system/settings-save',{method:'POST',body:JSON.stringify({ofono_modem_path:$('#ofonoPath').value,wan_iface:$('#wanIface').value,at_timeout_ms:+$('#atTimeout').value,allow_dangerous_at:+$('#dangerousAt').value,sms_forward_enabled:1,sms_forward_mode:$('#forwardMode').value,smtp_host:$('#smtpHost').value,smtp_port:+$('#smtpPort').value,smtp_user:$('#smtpUser').value,smtp_pass:$('#smtpPass').value,smtp_from:$('#smtpFrom').value,smtp_to:$('#smtpTo').value,sms_webhook_url:$('#webhookUrl').value})}))};"
         "$('#testForward').onclick=async()=>{$('#settingsJson').textContent=fmt(await api('/api/sms/forward-test',{method:'POST',body:JSON.stringify({from:'test',text:'CellMgr test SMS'})}))};"
         "$('#rebootNow').onclick=async()=>{if(confirm('立即重启设备?'))$('#settingsJson').textContent=fmt(await api('/api/system/reboot',{method:'POST',body:JSON.stringify({confirm:true})}))};"
-        "setInterval(refresh,3000);loadProfiles();refresh();";
+        "try{setInterval(refresh,3000);loadProfiles();refresh()}catch(e){let el=$('#overviewGrid');if(el)el.innerHTML=tile('app.js error',e&&e.message?e.message:String(e))};";
 }

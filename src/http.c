@@ -106,7 +106,8 @@ static int request_authorized(app_state *state, http_request *req)
 {
     if (!state->cfg.auth_enabled) return 1;
     if (strcmp(req->path, "/") == 0 || strcmp(req->path, "/style.css") == 0 ||
-        strcmp(req->path, "/app.js") == 0 || strcmp(req->path, "/api/auth/login") == 0) {
+        strcmp(req->path, "/app.js") == 0 || strcmp(req->path, "/favicon.ico") == 0 ||
+        strcmp(req->path, "/api/auth/login") == 0) {
         return 1;
     }
     return req->session_token[0] && strcmp(req->session_token, state->session_token) == 0;
@@ -1068,6 +1069,8 @@ static void route_request(int fd, app_state *state, http_request *req)
         response_raw(fd, 200, "text/css", web_style_css());
     } else if (strcmp(req->path, "/app.js") == 0) {
         response_raw(fd, 200, "application/javascript", web_app_js());
+    } else if (strcmp(req->path, "/favicon.ico") == 0) {
+        response_raw(fd, 200, "image/x-icon", "");
     } else if (strcmp(req->path, "/api/overview") == 0) {
         api_overview(fd, state);
     } else if (strcmp(req->path, "/api/auth/login") == 0) {
